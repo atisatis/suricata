@@ -1098,6 +1098,7 @@ enum {
     DETECT_IPREP,
 
     DETECT_DUMMY,
+    DETECT_SPAMBOT,
 
     /* make sure this stays last */
     DETECT_TBLSIZE,

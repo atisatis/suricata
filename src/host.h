@@ -69,6 +69,7 @@ typedef struct Host_ {
     void *threshold;
     void *iprep;
     void *dummy;
+    void *spambot;
 
     /** hash pointers, protected by hash row mutex/spin */
     struct Host_ *hnext;

@@ -109,6 +109,7 @@
 #include "detect-stream_size.h"
 #include "detect-engine-sigorder.h"
 #include "detect-dummy.h"
+#include "detect-spambot.h"
 #include "detect-ttl.h"
 #include "detect-fast-pattern.h"
 #include "detect-itype.h"
@@ -4741,6 +4742,7 @@ void SigTableSetup(void) {
     DetectCsumRegister();
     DetectStreamSizeRegister();
     DetectDummyRegister();
+	DetectSpambotRegister();
     DetectTtlRegister();
     DetectTosRegister();
     DetectFastPatternRegister();
