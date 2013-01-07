@@ -70,11 +70,15 @@ void DetectSpambotRegister(void) {
  */
 int DetectSpambotMatch (ThreadVars *t, DetectEngineThreadCtx *det_ctx, Packet *p, Signature *s, SigMatch *m) {
 
+	char *ptr;
+	int i;
+	uint32_t time;
     int ret = 0;
     DetectSpambotSig *dsig = (DetectSpambotSig *) m->ctx;
     DetectSpambotData *ddata;
     Host *h;
-
+	
+    /* skip pseudo packets etc. */
     if (PKT_IS_PSEUDOPKT(p)
         || !PKT_IS_IPV4(p)
         || p->flags & PKT_HOST_SRC_LOOKED_UP
@@ -82,34 +86,68 @@ int DetectSpambotMatch (ThreadVars *t, DetectEngineThreadCtx *det_ctx, Packet *p
         return 0;
     }
 
-    /* TODO: Inspect the packet contents here.
-     * Suricata defines a `Packet` structure in decode.h which already defines 
-     * many useful elements -- have a look! */
-	if(strstr((char *)p->payload, "RCPT TO:") == NULL) {
+    /* find "RCPT TO:" (case insensitiv) */
+	ptr = (char *)p->payload;
+	for(i=0; i<=8; i++) {
+		ptr[i] = tolower(ptr[i]);
+	}
+	ptr[8] = '\0';
+	if(strstr(ptr, "rcpt to:") == NULL) {
 		return 0;
 	}
-
+	
+	/* get hash entry */
     h = HostGetHostFromHash(&(p->src));
     p->flags |= PKT_HOST_SRC_LOOKED_UP;
-
     if (h == NULL) {
         printf("host not found!\n");
         return 0;
     }
-
+	
+	/* get packet time */
+	time = (uint32_t) p->ts.tv_sec;
+	
+	/* get spambotdata */
     ddata = (DetectSpambotData *) h->spambot;
     if (!ddata) {
         /* initialize fresh spambotdata */
         ddata = SCMalloc(sizeof(DetectSpambotData));
         bzero(ddata, sizeof(DetectSpambotData));
+		ddata->begin_interval = time;
+		ddata->begin_timespan = time;
         h->spambot = ddata;
     }
 	
+	/* check if interval_length expired */
+	if((time - ddata->begin_interval) >= dsig->interval_length) {
+		/* DEBUG print interval stats */
+		printf("Interval Expired (RCPT TO count: %d / %d)\n", ddata->cnt_rcpt_to, dsig->interval_peak_threshold);
+		ddata->cnt_violation += (ddata->cnt_rcpt_to >= dsig->interval_peak_threshold);
+		if(ddata->cnt_violation >= dsig->anomaly_threshold) {
+			/* throw alert */
+			ret = 1;
+		}
+		/* initialize new interval */
+		ddata->begin_interval += ((time - ddata->begin_interval) / dsig->interval_length) * dsig->interval_length;
+		ddata->cnt_rcpt_to = 0;
+	}
+	
+	/* check if timespan_length expired */
+	if((time - ddata->begin_timespan) >= dsig->timespan_length) {
+		/* DEBUG print timespan stats */
+		printf("Timespan Expired (VIOLATION count: %d / %d)\n", ddata->cnt_violation, dsig->anomaly_threshold);
+		if(ddata->cnt_violation >= dsig->anomaly_threshold) {
+			/* throw alert */
+			ret = 1;
+		}
+		/* initialize new timespan */
+		ddata->begin_timespan += ((time - ddata->begin_timespan) / dsig->timespan_length) * dsig->timespan_length;
+		ddata->cnt_violation = 0;
+	}
+	
+	/* increment rcpt_to counter */
     (ddata->cnt_rcpt_to)++;
-    // !!!DEBUG
-	printf("\"RCPT TO:\" found, cnt_rcpt_to now %d\n", ddata->cnt_rcpt_to);
-    ret = (ddata->cnt_rcpt_to > dsig->interval_peak_threshold);
-    
+	
     HostRelease(h);
     return ret;
 }

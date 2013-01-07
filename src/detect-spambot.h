@@ -24,8 +24,6 @@
 #ifndef _DETECT_SPAMBOT_H
 #define	_DETECT_SPAMBOT_H
 
-#include <time.h>
-
 typedef struct DetectSpambotSig_ {
     uint32_t interval_peak_threshold; /** < interval peak threshold */
 	uint32_t interval_length; /** < interval length in seconds */
@@ -34,8 +32,9 @@ typedef struct DetectSpambotSig_ {
 } DetectSpambotSig;
 
 typedef struct DetectSpambotData_ {
-	time_t begin_timespan;		/** < timestamp of start of timespan */
+	uint32_t begin_timespan;		/** < number of whole seconds of elapsed time */
     uint32_t cnt_rcpt_to;		/** < number of "RCPT TO:" sent in interval */
+	uint32_t begin_interval;		/** < number of whole seconds of elapsed time */
 	uint32_t cnt_violation;		/** < number of violation of anomaly_threshold in timespan */
 } DetectSpambotData;
 

@@ -1,1 +1,1 @@
-alert tcp $HOME_NET any -> $EXTERNAL_NET 25 (sid:12345; msg: "SPAMBOT DETECTED"; spambot: interval_peak_threshold:10, interval_length:60, anomaly_threshold:1, timespan_length:600; )
+alert tcp $HOME_NET any -> $EXTERNAL_NET 25 (sid:12345; msg: "SPAMBOT DETECTED"; spambot: interval_peak_threshold:10, interval_length:60, anomaly_threshold:1, timespan_length:600; threshold: type limit, track by_src, seconds 60, count 1;)
